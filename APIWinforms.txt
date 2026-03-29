@@ -1,0 +1,651 @@
+//APIWinforms
+using APIwinforms.DataModel;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+
+namespace APIwinforms
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            LoadData();
+        }
+        public async void GetCategories()
+        {
+            try
+            {
+                HttpClient client = new HttpClient();
+                var request = new HttpRequestMessage(HttpMethod.Get, "https://localhost:7171/api/Category");
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var categories = JsonSerializer.Deserialize<List<CategoryModel>>(jsonString, options);
+                comboBox1.DataSource = categories;
+                comboBox1.DisplayMember = "Name";
+                comboBox1.ValueMember = "Id";
+                if (categories != null && categories.Count > 0)
+                {
+                    GetProducts(categories[0].Id);
+                }
+            }
+            catch
+            {
+                comboBox1.DataSource = null;
+            }
+        }
+        public async void GetProducts(int categoryId)
+        {
+            try
+            {
+                HttpClient client = new HttpClient();
+                var request = new HttpRequestMessage(HttpMethod.Get, $"https://localhost:7171/api/Product/{categoryId}");
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var products = JsonSerializer.Deserialize<List<ProductModel>>(jsonString, options);
+                dataGridView1.DataSource = products;
+            }
+            catch
+            {
+                dataGridView1.DataSource = null;
+            }
+        }
+        public async void LoadData()
+        {
+            GetCategories();
+        }
+
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBox1.SelectedValue is int categoryId)
+            {
+                GetProducts(categoryId);
+            }
+            else
+            {
+                dataGridView1.DataSource = null;
+            }
+        }
+
+        private async void button1_Click(object sender, EventArgs e)
+        {
+            
+            if (comboBox1.SelectedValue is not int categoryId)
+            {
+                MessageBox.Show("Please select a category first.");
+                return;
+            }
+
+            var newProduct = new
+            {
+                Name = "New product",
+                Price = 0m,
+                Image = (string?)null,
+                CategoryId = categoryId
+            };
+
+            try
+            {
+                HttpClient client = new HttpClient();
+                string json = JsonSerializer.Serialize(newProduct);
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await client.PostAsync("https://localhost:7171/api/Product", content);
+                response.EnsureSuccessStatusCode();
+
+                // reload products for current category
+                GetProducts(categoryId);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private async void button2_Click(object sender, EventArgs e)
+        {
+            
+            if (comboBox1.SelectedValue is not int categoryId)
+            {
+                MessageBox.Show("Please select a category first.");
+                return;
+            }
+
+            if (dataGridView1.CurrentRow?.DataBoundItem is not ProductModel product)
+            {
+                MessageBox.Show("Please select a product to edit.");
+                return;
+            }
+
+            var updatedProduct = new
+            {
+                product.Id,
+                product.Name,
+                product.Price,
+                product.Image,
+                CategoryId = categoryId
+            };
+
+            try
+            {
+                HttpClient client = new HttpClient();
+                string json = JsonSerializer.Serialize(updatedProduct);
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await client.PutAsync($"https://localhost:7171/api/Product/{product.Id}", content);
+                response.EnsureSuccessStatusCode();
+
+                // reload products for current category
+                GetProducts(categoryId);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private async void button3_Click(object sender, EventArgs e)
+        {
+            // delete currently selected product
+            if (comboBox1.SelectedValue is not int categoryId)
+            {
+                MessageBox.Show("Please select a category first.");
+                return;
+            }
+
+            if (dataGridView1.CurrentRow?.DataBoundItem is not ProductModel product)
+            {
+                MessageBox.Show("Please select a product to delete.");
+                return;
+            }
+
+            var confirm = MessageBox.Show("Delete selected product?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm != DialogResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                HttpClient client = new HttpClient();
+                var response = await client.DeleteAsync($"https://localhost:7171/api/Product/{product.Id}");
+                response.EnsureSuccessStatusCode();
+
+                // reload products for current category
+                GetProducts(categoryId);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+    }
+}
+
+
+//productcontroller
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ProductApi.Models;
+
+namespace ProductApi.Controllers
+{
+    [Route("api/[Controller]")]
+    [ApiController]
+    public class ProductController : Controller
+    {
+        ProductDbContext db = new ProductDbContext();
+
+        [HttpGet("{categoryid}")]
+        public ActionResult<List<Product>> GetProductByCategoryId(int categoryid)
+        {
+            try
+            {
+                var products = db.Products.Where(x => x.CategoryId == categoryid || categoryid == 0).Select(x => new
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Price = x.Price,
+                    Image = x.Image
+                }).ToList();
+                if (!products.Any())
+                {
+                    return NotFound("No Product Found");
+                }
+                return Ok(products);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+
+        [HttpGet("search")]
+        public ActionResult<List<Product>> GetProductByCategoryId(String Search)
+        {
+            try
+            {
+                var products = db.Products.Where(x => x.Name.Contains(Search)).Select(x => new
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Price = x.Price,
+                    Image = x.Image
+                }).ToList();
+                if (!products.Any())
+                {
+                    return NotFound("No Product Found");
+                }
+                return Ok(products);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPost]
+        public ActionResult<Product> InsertProduct([FromBody] Product product)
+        {
+
+            try
+            {
+
+                db.Products.Add(product);
+                db.SaveChanges();
+                return Ok(product);
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+        [HttpDelete("{productId}")]
+        public ActionResult<Product> DeleteProduct(int productId)
+        {
+            try
+            {
+                Product product = db.Products.FirstOrDefault(x => x.Id == productId);
+                if (product == null)
+                {
+                    return NotFound("Product not found");
+                }
+                db.Products.Remove(product);
+                db.SaveChanges();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPut("{productId}")]
+        public ActionResult<Product> updateProduct(int productId, [FromBody]Product product)
+        {
+            try
+            {
+                Product productToUpdate = db.Products.FirstOrDefault(x => x.Id == productId);
+                productToUpdate.Name = product.Name;
+                productToUpdate.Description = product.Description;
+                productToUpdate.Image = product.Image;
+                productToUpdate.Price = product.Price;
+                productToUpdate.CategoryId = product.CategoryId;
+                //db.Products.Update(productToUpdate);
+                db.SaveChanges();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+    }
+}
+
+//categorycontroller
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using ProductApi.Models;
+
+namespace ProductApi.Controllers
+{
+    [Route("api/[Controller]")]
+    [ApiController]
+    public class Category : Controller
+    {
+        ProductDbContext db = new ProductDbContext();
+
+        [HttpGet]
+        public ActionResult<List<ProductApi.Models.Category>> GetCategories()
+        {
+            try
+            {
+                List<ProductApi.Models.Category> categories = db.Categories.ToList();
+                if (!categories.Any())
+                {
+                    return NotFound("No Category was found");
+                }
+                ProductApi.Models.Category cat = new ProductApi.Models.Category();
+                cat.Id = 0;
+                cat.Name = "All Category";
+                categories.Insert(0,cat);
+                return Ok(categories);
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+
+        }
+
+    }
+}
+
+Mainactivity.kt
+package com.example.apiandroid
+
+import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.EditText
+import android.widget.ListView
+import android.widget.Spinner
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import okhttp3.OkHttpClient
+import okhttp3.Request
+
+class MainActivity : AppCompatActivity() {
+    private lateinit var listView: ListView
+    private lateinit var spinner: Spinner
+    private lateinit var editText: EditText
+    private lateinit var adapter: ProductAdapter
+    private val productsList = mutableListOf<ProductModel>()
+    private val displayedProducts = mutableListOf<ProductModel>()
+    private val categories = mutableListOf<CategoryModel>()
+    private lateinit var categoryAdapter: ArrayAdapter<CategoryModel>
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContentView(R.layout.activity_main)
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
+
+        listView = findViewById(R.id.list_item)
+        spinner = findViewById(R.id.spinner)
+        editText = findViewById(R.id.editText)
+
+        adapter = ProductAdapter(this, displayedProducts)
+        listView.adapter = adapter
+
+        categoryAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categories)
+        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = categoryAdapter
+
+        loadCategories()
+
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (categories.isNotEmpty()) {
+                    val selectedCategory = categories[position]
+                    loadProducts(selectedCategory.id)
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        editText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                filterProducts(s.toString())
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+    }
+
+    private fun loadCategories() {
+        Thread {
+            try {
+                val client = OkHttpClient()
+                val request = Request.Builder()
+                    .url("http://10.0.2.2:5023/api/Category")
+                    .build()
+                val response = client.newCall(request).execute()
+                val jsonString = response.body?.string()
+                val type = object : TypeToken<List<CategoryModel>>() {}.type
+                val fetchedCategories: List<CategoryModel> = Gson().fromJson(jsonString, type)
+
+                runOnUiThread {
+                    categories.clear()
+                    categories.addAll(fetchedCategories)
+                    categoryAdapter.notifyDataSetChanged()
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error loading categories", e)
+            }
+        }.start()
+    }
+
+    private fun loadProducts(categoryId: Int) {
+        Thread {
+            try {
+                val result = getProduct(categoryId)
+                runOnUiThread {
+                    productsList.clear()
+                    productsList.addAll(result)
+                    filterProducts(editText.text.toString())
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error loading products", e)
+            }
+        }.start()
+    }
+
+    private fun filterProducts(query: String) {
+        displayedProducts.clear()
+        if (query.isEmpty()) {
+            displayedProducts.addAll(productsList)
+        } else {
+            val filtered = productsList.filter { it.name.contains(query, ignoreCase = true) }
+            displayedProducts.addAll(filtered)
+        }
+        adapter.notifyDataSetChanged()
+    }
+
+    private fun getProduct(categoryId: Int): List<ProductModel> {
+        val client = OkHttpClient()
+        val url = "http://10.0.2.2:5023/api/Product/$categoryId"
+        val request = Request.Builder()
+            .url(url)
+            .build()
+        val response = client.newCall(request).execute()
+        val jsonString = response.body?.string()
+        val type = object : TypeToken<List<ProductModel>>() {}.type
+        return Gson().fromJson(jsonString, type) ?: emptyList()
+    }
+}
+
+ProductAdapter.kt
+package com.example.apiandroid
+
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.BaseAdapter
+import android.widget.ImageView
+import android.widget.TextView
+
+class ProductAdapter(
+    private val context: Context,
+    private val products: MutableList<ProductModel>
+) : BaseAdapter() {
+
+    override fun getCount(): Int {
+        return products.size
+    }
+
+    override fun getItem(position: Int): Any {
+        return products[position]
+    }
+
+    override fun getItemId(position: Int): Long {
+        return position.toLong()
+    }
+
+    override fun getView(
+        position: Int,
+        convertView: View?,
+        parent: ViewGroup?
+    ): View {
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.product_row, parent, false)
+        val product = products[position]
+        
+        val txtName: TextView = view.findViewById(R.id.product_name)
+        val txtPrice: TextView = view.findViewById(R.id.product_price)
+        val fav: ImageView = view.findViewById(R.id.imageview)
+
+        txtName.text = product.name
+        txtPrice.text = product.price.toString()
+
+        // Set correct icon based on favorite status
+        if (product.isFavorite) {
+            fav.setImageResource(android.R.drawable.btn_star_big_on)
+        } else {
+            fav.setImageResource(android.R.drawable.btn_star_big_off)
+        }
+
+        fav.setOnClickListener {
+            product.isFavorite = !product.isFavorite
+            notifyDataSetChanged()
+        }
+
+        return view
+    }
+}
+
+product_row.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        app:srcCompat="@android:mipmap/sym_def_app_icon" />
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_weight="2"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/product_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:text="Product Name" />
+        <TextView
+            android:id="@+id/product_price"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Product_Price" />
+
+    </LinearLayout>
+    <TextView
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:padding="10dp"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:text="Details"
+        android:textColor="#050505"/>
+
+    <ImageView
+        android:id="@+id/imageview"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        app:srcCompat="@android:drawable/btn_star_big_on" />
+
+</LinearLayout>
+
+activity_main.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="10dp">
+
+
+        <Spinner
+            android:id="@+id/spinner"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1" />
+
+        <EditText
+            android:id="@+id/editText"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:autofillHints="none"
+            android:hint="@string/hint_type_here"
+            android:inputType="text" />
+    </LinearLayout>
+
+    <ListView
+        tools:listitem="@layout/product_row"
+        android:layout_margin="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/list_item"
+        />
+
+</LinearLayout>

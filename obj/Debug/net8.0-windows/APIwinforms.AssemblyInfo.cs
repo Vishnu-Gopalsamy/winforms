@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("APIwinforms")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f0207c7bc95a1f24bc656ba7e14bf7e305de39db")]
 [assembly: System.Reflection.AssemblyProductAttribute("APIwinforms")]
 [assembly: System.Reflection.AssemblyTitleAttribute("APIwinforms")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
