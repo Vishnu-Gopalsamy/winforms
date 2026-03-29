@@ -649,3 +649,15 @@ activity_main.xml
         />
 
 </LinearLayout>
+
+//categorymodel
+package com.example.apiandroid
+
+data class CategoryModel(
+    val id: Int,
+    val name: String
+) {
+    override fun toString(): String {
+        return name
+    }
+}
