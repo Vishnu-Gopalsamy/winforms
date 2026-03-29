@@ -1,0 +1,16 @@
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\bin\Debug\net8.0-windows\APIwinforms.exe
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\bin\Debug\net8.0-windows\APIwinforms.deps.json
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\bin\Debug\net8.0-windows\APIwinforms.runtimeconfig.json
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\bin\Debug\net8.0-windows\APIwinforms.dll
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\bin\Debug\net8.0-windows\APIwinforms.pdb
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.Form1.resources
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.csproj.GenerateResource.cache
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.GeneratedMSBuildEditorConfig.editorconfig
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.AssemblyInfoInputs.cache
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.AssemblyInfo.cs
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.csproj.CoreCompileInputs.cache
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.dll
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\refint\APIwinforms.dll
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.pdb
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\APIwinforms.genruntimeconfig.cache
+D:\college\sem 6\tnskills\C# learn\invs\APIwinforms\APIwinforms\obj\Debug\net8.0-windows\ref\APIwinforms.dll
